@@ -58,16 +58,7 @@
       display:none;
       pointer-events:none;
     }
-    .top h1 { margin:0; font-size:clamp(24px,3.8vw,35px); letter-spacing:.2px }
-    .top h1::after {
-      content:"智慧分析版";
-      display:block;
-      margin-top:8px;
-      font-size:13px;
-      font-weight:700;
-      letter-spacing:.12em;
-      color:rgba(255,255,255,.82);
-    }
+    .top h1 { margin:0; font-size:clamp(24px,6.8vw,35px); letter-spacing:.2px; line-height:1.2; word-break:break-word }
     .grid { display:grid; grid-template-columns:1.02fr .98fr; gap:16px }
     .panel {
       min-width:0;
@@ -194,6 +185,37 @@
     .smart-method p { margin:8px 0 0 }
     @media(max-width:760px) {.smart-grid {grid-template-columns:1fr 1fr} .smart-metric:last-child {grid-column:1/-1}}
     @media(max-width:400px) {.smart-grid {grid-template-columns:1fr} .smart-metric:last-child {grid-column:auto} .smart-metric {padding:13px 15px}}
+  
+    @media(max-width:560px) {
+      .wrap { padding:10px 10px 24px }
+      .top { padding:18px 16px; border-radius:18px; margin-bottom:14px }
+      .panel { padding:16px; border-radius:16px }
+      h2 { font-size:18px; margin-bottom:14px }
+      .form-fields { grid-template-columns:1fr }
+      .field:last-child { grid-column:auto }
+      .btn-row { gap:8px }
+      .btn-row .btn { flex:1 1 auto }
+      .stats { grid-template-columns:1fr }
+      .stat.main { grid-column:auto }
+      .analysis-head, .smart-heading, .smart-topline, .records-head { align-items:flex-start; flex-direction:column }
+      .comparison, .smart-grid { grid-template-columns:1fr }
+      .record-tools { width:100% }
+      .record-tools .btn { flex:1 1 calc(50% - 6px); justify-content:center }
+      .chart-empty { min-height:200px; padding:16px }
+      .smart-note { padding:14px 15px }
+      .smart-empty { padding:18px }
+    }
+    @media(max-width:420px) {
+      .top h1 { font-size:28px }
+      .record-tools .btn, .btn-row .btn { width:100% }
+      .rline { grid-template-columns:1fr; gap:10px; padding:12px }
+      .actions { justify-content:stretch }
+      .actions button { flex:1 }
+      .compare-card strong, .smart-metric strong { font-size:22px }
+      .stat strong { font-size:21px }
+      .stat.main strong { font-size:30px }
+    }
+
   </style>
 </head>
 <body>
