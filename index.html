@@ -216,6 +216,45 @@
       .stat.main strong { font-size:30px }
     }
 
+
+    /* iPhone / mobile Safari: date and time pickers have larger native min-content widths.
+       Use a single full-width column to prevent them from escaping their card. */
+    .form-fields > .field { min-width:0; }
+    .form-fields input[type="date"],
+    .form-fields input[type="time"],
+    .form-fields input[type="number"] {
+      display:block;
+      width:100%;
+      max-width:100%;
+      min-width:0;
+    }
+    @media (max-width:680px) {
+      .grid, .analytics-grid, .smart-grid, .comparison { min-width:0; }
+      .form-fields { display:grid; grid-template-columns:minmax(0,1fr); gap:14px; }
+      .form-fields > .field { grid-column:1 / -1; width:100%; min-width:0; }
+      .form-fields input[type="date"],
+      .form-fields input[type="time"],
+      .form-fields input[type="number"] {
+        min-width:0;
+        max-width:100%;
+        width:100%;
+        box-sizing:border-box;
+        font-size:16px;
+      }
+    }
+    @supports (-webkit-touch-callout:none) {
+      input[type="date"], input[type="time"] {
+        -webkit-appearance:none;
+        appearance:none;
+        max-width:100%;
+        min-width:0;
+      }
+      input[type="date"]::-webkit-date-and-time-value,
+      input[type="time"]::-webkit-date-and-time-value {
+        text-align:left;
+        min-height:1.2em;
+      }
+    }
   </style>
 </head>
 <body>
