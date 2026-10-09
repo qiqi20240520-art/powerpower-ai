@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#164b71">
+  <title>台灣電費計算器</title>
+  <style>
+    :root { font-family:system-ui,-apple-system,"Microsoft JhengHei","Noto Sans TC",sans-serif; color:#1b364b; background:#f4f7fb; font-synthesis:none }
+    * { box-sizing:border-box }
+    body { margin:0 }
+    input,button { font:inherit }
+    button { cursor:pointer }
+    [hidden] { display:none !important }
+    .wrap { max-width:1040px; margin:0 auto; padding:20px 18px 36px }
+    .top { background:linear-gradient(108deg,#102e4d,#225f80);color:#fff;border-radius:18px;padding:24px 28px;margin-bottom:18px }
+    .top h1 { margin:0;font-size:clamp(24px,3.8vw,33px);letter-spacing:.4px }
+    .grid { display:grid;grid-template-columns:1.02fr .98fr;gap:16px }
+    .panel { min-width:0;background:#fff;border:1px solid #dfebf2;border-radius:16px;padding:22px;box-shadow:0 4px 12px rgba(11,47,73,.035) }
+    h2 { margin:0 0 18px;font-size:19px;line-height:1.4 }
+    .form-fields { display:grid;grid-template-columns:1fr 1fr;gap:13px }
+    .field:last-child { grid-column:1/-1 }
+    label { display:block;font-size:13px;font-weight:750;color:#4b6980;margin-bottom:7px }
+    input[type=date],input[type=time],input[type=number] { width:100%;min-width:0;min-height:48px;border-radius:10px;border:1px solid #c8d7e3;background:#fff;color:#1b3e56;padding:10px 12px;font-size:16px }
+    input:focus-visible,button:focus-visible { outline:3px solid #79bdea;outline-offset:2px }
+    .btn { border:0;min-height:43px;border-radius:10px;padding:10px 15px;font-size:14px;font-weight:750;background:#18577e;color:#fff }
+    .btn:hover { filter:brightness(1.07) }
+    .btn.soft { background:#e8f1f8;color:#245f83 }
+    .btn.danger { background:#fff0ed;color:#a74439 }
+    .btn-row { display:flex;gap:8px;flex-wrap:wrap;margin-top:16px }
+    .mini { font-size:12px;color:#657f92;margin:11px 0 0;line-height:1.65 }
+    .notice { margin-top:12px;border-radius:10px;padding:10px 13px;background:#e9f6ed;color:#225e3c;font-size:13px;line-height:1.5 }
+    .notice.error { background:#ffefed;color:#993d35 }
+    .range { color:#667e8e;font-size:12px;min-height:17px;margin:-9px 0 12px }
+    .stats { display:grid;grid-template-columns:1fr 1fr;gap:11px }
+    .stat { background:#f2f7fb;border:1px solid #e5eff5;padding:15px;border-radius:12px }
+    .stat strong { font-size:clamp(22px,2.7vw,28px);color:#174f75;letter-spacing:-.4px;font-weight:850;overflow-wrap:anywhere }
+    .stat.main { grid-column:1/-1;background:#e8f4fb;padding:17px }
+    .stat.main strong { font-size:clamp(29px,4.2vw,40px) }
+    .stat span { display:block;font-size:12px;color:#5e7789;margin-bottom:9px }
+    .records { margin-top:16px }
+    .records-head { display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px }
+    .records-head h2 { margin:0 }
+    .count { font-size:12px;color:#7b8c98;font-weight:600 }
+    .record-tools { display:flex;align-items:center;gap:7px;flex-wrap:wrap }
+    .record-tools .btn { min-height:36px;padding:7px 12px;font-size:12px }
+    .rline { display:grid;grid-template-columns:1.15fr 1fr .9fr 1fr auto;gap:10px;align-items:center;border-bottom:1px solid #e9eef3;padding:13px 8px;font-size:13px }
+    .rline.header { color:#677e8f;background:#f4f8fb;font-weight:750;border:0;border-radius:8px;font-size:12px;padding:10px 8px }
+    .value { color:#134e76;font-weight:800 }
+    .secondary-text { color:#7a91a0;font-size:11px;margin-top:4px }
+    .actions { display:flex;gap:5px;justify-content:flex-end }
+    .actions button { border:1px solid #dbe6ee;border-radius:8px;background:#fff;color:#25628a;font-size:12px;padding:7px 9px;min-height:34px;white-space:nowrap }
+    .actions button.del { color:#ad4c43 }
+    .actions button:hover { background:#f0f6fa }
+    .cell-label { display:none }
+    .empty { color:#8293a2;text-align:center;padding:30px 12px;font-size:14px }
+    .foot { color:#738898;font-size:11px;margin:16px 4px;line-height:1.65 }
+    .analytics { margin-top:16px }
+    .analysis-head { display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px }
+    .analysis-head h2 { margin:0 }
+    .analysis-unit { color:#667f91;font-size:12px }
+    .analytics-grid { display:grid;grid-template-columns:minmax(0,1fr) 215px;gap:16px;align-items:stretch }
+    .chart-shell { min-width:0;overflow-x:auto;border:1px solid #e7eef5;background:#fbfdff;border-radius:12px }
+    .chart-empty { min-height:244px;display:grid;place-items:center;padding:20px;text-align:center;color:#7990a1;font-size:14px }
+    .trend-svg { display:block;width:100%;height:auto }
+    .comparison { display:grid;gap:10px;align-content:start }
+    .compare-card { padding:16px;border-radius:12px;background:#f1f7fb;border:1px solid #e4eef5;min-width:0 }
+    .compare-card span { display:block;color:#637e90;font-size:12px;margin-bottom:8px }
+    .compare-card strong { display:block;font-size:26px;color:#174e74;letter-spacing:-.5px;overflow-wrap:anywhere }
+    .compare-card .detail { font-size:12px;line-height:1.5;color:#667f91;margin:8px 0 0 }
+    .compare-card strong.up { color:#b84d3c }
+    .compare-card strong.down { color:#207857 }
+    .compare-card strong.flat { color:#174e74 }
+    @media(max-width:760px) { .analytics-grid { grid-template-columns:minmax(0,1fr) } .comparison { grid-template-columns:1fr 1fr } }
+    @media(max-width:390px) { .comparison { grid-template-columns:1fr 1fr;gap:8px } .compare-card {padding:12px} .compare-card strong {font-size:21px} }
+    @media(max-width:760px) { .grid { grid-template-columns:1fr } .wrap { padding:12px 12px 30px } .panel { padding:18px } .top { padding:21px 20px } }
+    @media(max-width:620px) {
+      .rline.header { display:none }
+      .rline { grid-template-columns:1fr 1fr;gap:12px 8px;margin-top:9px;border:1px solid #e5edf3;border-radius:11px;background:#fdfefe;padding:13px }
+      .cell-label { display:block;color:#778c9e;font-size:11px;font-weight:700;margin-bottom:4px }
+      .actions { grid-column:1/-1;border-top:1px dashed #e5edf3;padding-top:9px }
+      .records-head { align-items:flex-start }
+      .record-tools .btn { min-height:34px }
+    }
+    @media(max-width:370px) { .form-fields {grid-template-columns:1fr} .field:last-child {grid-column:auto} .btn-row .btn {flex:1} .stat strong {font-size:20px} }
+
+    /* 智慧分析版：保留原有三欄輸入與全部歷史資料結構。 */
+    .smart-panel { margin-top:16px }
+    .smart-heading { display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px }
+    .smart-heading h2 {margin:0}
+    .smart-caption {color:#668094;font-size:12px}
+    .smart-empty {padding:22px;border:1px dashed #c9dce8;background:#f7fbfe;border-radius:12px;color:#5b788b;line-height:1.7;font-size:14px}
+    .smart-topline {display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+    .signal {font-size:13px;font-weight:800;border-radius:999px;padding:7px 12px;background:#e9f4fa;color:#225c80}
+    .signal.warn {background:#fff1e9;color:#a7472c}
+    .signal.good {background:#e9f7f0;color:#247755}
+    .signal.muted {background:#edf3f7;color:#627b8f}
+    .smart-confidence {color:#637e90;font-size:12px}
+    .smart-grid {display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+    .smart-metric {min-width:0;padding:16px 15px;background:#f3f8fc;border:1px solid #e6eff6;border-radius:12px}
+    .smart-metric span {color:#58778d;font-size:12px;display:block;margin-bottom:8px}
+    .smart-metric strong {color:#16537b;font-size:clamp(21px,2.6vw,29px);line-height:1.18;letter-spacing:-.3px;overflow-wrap:anywhere;display:block}
+    .smart-metric small {display:block;color:#6a8496;line-height:1.5;font-size:11px;margin-top:9px}
+    .smart-note {margin-top:13px;padding:16px 18px;background:#eaf5fb;border-left:4px solid #4394c6;border-radius:10px;color:#234d69;font-size:14px;line-height:1.7}
+    .smart-note p {margin:0 0 8px}
+    .smart-note p:last-child {margin-bottom:0}
+    .smart-method {margin-top:12px;font-size:12px;color:#6d8290;line-height:1.7}
+    .smart-method summary {cursor:pointer;font-weight:750;color:#486a82}
+    .smart-method p {margin:8px 0 0}
+    @media(max-width:760px) {.smart-grid {grid-template-columns:1fr 1fr} .smart-metric:last-child {grid-column:1/-1}}
+    @media(max-width:400px) {.smart-grid {grid-template-columns:1fr} .smart-metric:last-child {grid-column:auto} .smart-metric {padding:13px 15px}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="top"><h1>⚡ 台灣電費計算器</h1></header>
+    <div class="grid">
+      <section class="panel" aria-labelledby="inputTitle">
+        <h2 id="inputTitle">記錄電錶度數</h2>
+        <form id="entryForm" novalidate>
+          <div class="form-fields">
+            <div class="field"><label for="readingDate">日期</label><input id="readingDate" type="date" required></div>
+            <div class="field"><label for="readingTime">時間</label><input id="readingTime" type="time" step="60" required></div>
+            <div class="field"><label for="readingValue">電錶累計度數（kWh）</label><input id="readingValue" type="number" inputmode="decimal" step="any" min="0" placeholder="例如 12065" required></div>
+          </div>
+          <div class="btn-row"><button class="btn" id="submitBtn" type="submit">＋ 儲存讀數</button><button class="btn soft" id="cancelEdit" type="button" hidden>取消修改</button></div>
+        </form>
+        <div id="status" class="notice" role="status" aria-live="polite" hidden></div>
+        <p class="mini">請輸入電錶上的<strong>累計度數</strong>，從第二筆起自動計算差額。</p>
+      </section>
+      <section class="panel" aria-labelledby="resultTitle">
+        <h2 id="resultTitle">用電結果</h2>
+        <div class="range" id="resultRange"></div>
+        <div class="stats">
+          <div class="stat main"><span>總用電量</span><strong id="totalUsage">—</strong></div>
+          <div class="stat"><span>最近區間用電</span><strong id="lastUsage">—</strong></div>
+          <div class="stat"><span>最近區間預估電費</span><strong id="lastCost">—</strong></div>
+        </div>
+        <p class="mini" id="estimateNote">電費為概算，與正式帳單可能不同。</p>
+      </section>
+    </div>
+    <section class="panel analytics" aria-labelledby="analysisTitle">
+      <div class="analysis-head"><h2 id="analysisTitle">用電趨勢</h2><span class="analysis-unit">每段平均用電（度／日）</span></div>
+      <div class="analytics-grid">
+        <div class="chart-shell">
+          <div id="trendEmpty" class="chart-empty">新增兩筆讀數即可查看用電趨勢</div>
+          <svg id="trendChart" class="trend-svg" viewBox="0 0 720 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="每段每日平均用電折線圖" hidden></svg>
+        </div>
+        <div class="comparison">
+          <div class="compare-card"><span>最近一段日均用電</span><strong id="latestDaily">—</strong><p class="detail" id="latestDetail">—</p></div>
+          <div class="compare-card"><span>比前一段</span><strong id="changePercent" class="flat">—</strong><p class="detail" id="compareDetail">至少需要三筆讀數</p></div>
+        </div>
+      </div>
+    </section>
+    <section class="panel smart-panel" aria-labelledby="smartTitle">
+      <div class="smart-heading"><h2 id="smartTitle">✦ 智慧用電分析</h2><span class="smart-caption">本機統計分析 · 自動更新</span></div>
+      <div id="smartEmpty" class="smart-empty">至少需要 4 筆讀數且涵蓋 7 天，才能開始預測。每次儲存讀數後會自動分析。</div>
+      <div id="smartContent" hidden>
+        <div class="smart-topline"><span class="signal muted" id="smartStatus">觀察中</span><span class="smart-confidence" id="smartConfidence"></span></div>
+        <div class="smart-grid">
+          <div class="smart-metric"><span>未來 30 天預估用電</span><strong id="futureUsage">—</strong><small id="forecastRange">—</small></div>
+          <div class="smart-metric"><span>未來 30 天電費概算</span><strong id="futureCost">—</strong><small id="futureCostRange">—</small></div>
+          <div class="smart-metric"><span>近期日均用電</span><strong id="recentDirection">—</strong><small id="recentExplain">—</small></div>
+        </div>
+        <div id="smartNarrative" class="smart-note" aria-live="polite"></div>
+      </div>
+      <details class="smart-method"><summary>分析與預測如何計算？</summary><p>本功能使用瀏覽器內的統計演算法，並非連線生成式 AI。將相鄰電錶讀數差額換算成每日用電，使用近期有效區間的加權平均（抑制極端值）估計未來 30 天；預估範圍是依歷史波動設定的情境區間，不是保證值或統計信賴區間。當資料太少、讀數間隔太短或讀數過舊時會降低信心或停止預測。</p><p>異常提醒使用「最近區間」對比先前至少 3 段歷史區間的基準值，按差異比例及波動程度判定；只能觀察用電變化，無法判定是哪一台電器造成。電費依台電住宅非時間電價的雙月級距與夏月比例推估流動電費，實際帳單及未來電價可能不同。</p></details>
+    </section>
+    <section class="panel records" aria-labelledby="recordsTitle">
+      <div class="records-head">
+        <h2 id="recordsTitle">讀數記錄 <span class="count" id="recordCount">0 筆</span></h2>
+        <div class="record-tools">
+          <button class="btn soft" id="importBtn" type="button">匯入 CSV</button>
+          <button class="btn soft" id="csvBtn" type="button">匯出 CSV</button>
+          <button class="btn danger" id="clearBtn" type="button">清空</button>
+          <input type="file" id="csvInput" accept=".csv,text/csv" hidden>
+        </div>
+      </div>
+      <div class="rline header" aria-hidden="true"><span>日期／時間</span><span>累計度數</span><span>使用度數</span><span>預估電費</span><span style="text-align:right">操作</span></div>
+      <div id="recordList"><div class="empty">尚無記錄</div></div>
+    </section>
+    <footer class="foot">資料僅保存在此瀏覽器、不上傳雲端；請定期匯出 CSV 備份。智慧分析為本機統計預測，電費僅供參考。</footer>
+  </main>
+<script>
+'use strict';
+// 與 B3 相同的儲存鍵：同一瀏覽器來源可沿用舊版資料。
+const KEY = 'tw_meter_readings_B3_v1';
+const RATE_START = Date.parse('2025-10-01T00:00:00+08:00');
+const MONTH_TIERS = [120, 330, 500, 700, 1000];
+const RATES_SUMMER = [1.78, 2.55, 3.80, 5.14, 6.44, 8.86];
+const RATES_WINTER = [1.78, 2.26, 3.13, 4.24, 5.27, 7.03];
+const $ = id => document.getElementById(id);
+const num = (value, decimals = 0) => Number(value).toLocaleString('zh-TW', {minimumFractionDigits:decimals, maximumFractionDigits:decimals});
+const kwhText = value => num(value, Math.abs(value - Math.round(value)) < 1e-8 ? 0 : 2) + ' 度';
+const moneyText = value => 'NT$ ' + num(Math.round(value));
+let readings = [], editingId = null, storageOK = true;
+
+function taipeiTimestamp(date,time) {
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return NaN;
+  const ms = Date.parse(date+'T'+time+':00+08:00');
+  if(!Number.isFinite(ms)) return NaN;
+  return new Date(ms + 8*3600000).toISOString().slice(0,16) === date+'T'+time ? ms : NaN;
+}
+function taiwanNow() {
+  const parts = new Intl.DateTimeFormat('en-GB', {timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date());
+  const v = {}; parts.forEach(p => v[p.type] = p.value);
+  return {date:`${v.year}-${v.month}-${v.day}`,time:`${v.hour}:${v.minute}`};
+}
+function seasonShare(from,to) {
+  let cursor=from, summer=0;
+  while(cursor<to) {
+    const d=new Date(cursor+8*3600000), year=d.getUTCFullYear();
+    const b=[Date.parse(`${year}-06-01T00:00:00+08:00`),Date.parse(`${year}-10-01T00:00:00+08:00`),Date.parse(`${year+1}-06-01T00:00:00+08:00`)];
+    const next=Math.min(to,...b.filter(t=>t>cursor));
+    if(d.getUTCMonth()+1>=6 && d.getUTCMonth()+1<=9) summer += next-cursor;
+    cursor=next;
+  }
+  return summer/(to-from);
+}
+function price60Days(usage,summer) {
+  const rates=summer?RATES_SUMMER:RATES_WINTER;
+  let total=0,low=0;
+  for(let i=0;i<6;i++) {
+    const high=i===5?Infinity:MONTH_TIERS[i]*2;
+    total+=Math.max(0,Math.min(usage,high)-low)*rates[i];
+    low=high;
+  }
+  return total;
+}
+// 區間金額為依當前用電速度投射到雙月帳期、再縮回該區間的粗估，不是正式帳單。
+function interval(previous,current) {
+  const a=taipeiTimestamp(previous.date,previous.time),b=taipeiTimestamp(current.date,current.time);
+  const days=(b-a)/86400000, used=current.reading-previous.reading;
+  if(!Number.isFinite(days)||days<=0||!Number.isFinite(used)||used<0) return {used,fee:null,reason:'讀數錯誤'};
+  if(days>70||a<RATE_START) return {used,fee:null,reason:'區間不適用目前電價'};
+  const projected=used/days*60, share=seasonShare(a,b);
+  const fee=(price60Days(projected,true)*share+price60Days(projected,false)*(1-share))*days/60;
+  return {used,fee,reason:''};
+}
+function isValidReading(r) {
+  return r&&typeof r.id==='string'&&typeof r.date==='string'&&typeof r.time==='string'&&Number.isFinite(taipeiTimestamp(r.date,r.time))&&typeof r.reading==='number'&&Number.isFinite(r.reading)&&r.reading>=0&&r.reading<=1e10;
+}
+function tidy(items) {
+  return Array.isArray(items)?items.filter(isValidReading).slice(0,3000).sort((a,b)=>taipeiTimestamp(a.date,a.time)-taipeiTimestamp(b.date,b.time)):[];
+}
+function alertUser(message,error=false) {
+  const node=$('status');node.textContent=message;node.classList.toggle('error',error);node.hidden=false;
+}
+function load() {
+  try { readings=tidy(JSON.parse(localStorage.getItem(KEY)||'[]')); }
+  catch { readings=[];storageOK=false;alertUser('無法讀取瀏覽器儲存資料，請使用 CSV 匯入。',true); }
+}
+function save() {
+  try { localStorage.setItem(KEY,JSON.stringify(readings));storageOK=true;return true; }
+  catch { storageOK=false;alertUser('目前無法儲存資料，請立即匯出 CSV。',true);return false; }
+}
+function defaultTime() {
+  const now=taiwanNow();$('readingDate').value=now.date;$('readingTime').value=now.time;
+}
+function resetForm() {
+  editingId=null;$('submitBtn').textContent='＋ 儲存讀數';$('cancelEdit').hidden=true;$('readingValue').value='';defaultTime();
+}
+function validate(candidate,otherRows=readings) {
+  if(!Number.isFinite(taipeiTimestamp(candidate.date,candidate.time))) return '日期或時間不正確。';
+  if(!Number.isFinite(candidate.reading)||candidate.reading<0||candidate.reading>1e10) return '請輸入正確的電錶度數。';
+  const others=otherRows.filter(r=>r.id!==candidate.id);
+  if(others.some(r=>r.date===candidate.date&&r.time===candidate.time)) return '這個日期與時間已有記錄。';
+  const sorted=[...others,candidate].sort((a,b)=>taipeiTimestamp(a.date,a.time)-taipeiTimestamp(b.date,b.time));
+  for(let i=1;i<sorted.length;i++) if(sorted[i].reading<sorted[i-1].reading) return '累計度數不能比上一筆低。';
+  if(sorted.length>3000) return '記錄已達上限，請匯出備份。';
+  return '';
+}
+$('entryForm').addEventListener('submit',event=>{
+  event.preventDefault();
+  const raw=$('readingValue').value.trim();
+  const r={id:editingId||('r'+Date.now().toString(36)+Math.random().toString(36).slice(2)),date:$('readingDate').value,time:$('readingTime').value,reading:raw===''?NaN:Number(raw)};
+  const error=validate(r); if(error) {alertUser(error,true);return;}
+  if(editingId) readings=readings.map(item=>item.id===editingId?r:item);
+  else readings.push(r);
+  readings.sort((a,b)=>taipeiTimestamp(a.date,a.time)-taipeiTimestamp(b.date,b.time));
+  const edit=Boolean(editingId);const ok=save();draw();resetForm();if(ok)alertUser(edit?'已更新':'已儲存');
+});
+$('cancelEdit').onclick=()=>{resetForm();$('status').hidden=true};
+function elem(tag,text,cls) { const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e; }
+function appendCell(row,label,value,minor='',cls='') {
+  const cell=elem('div',undefined,cls);cell.append(elem('span',label,'cell-label'),elem('div',value));
+  if(minor)cell.append(elem('div',minor,'secondary-text'));row.append(cell);
+}
+// 趨勢採每個記錄區間的「度數 ÷ 間隔天數」，避免非等距抄表直接比較總量。
+function dailyIntervals() {
+  const segments=[];
+  for(let i=1;i<readings.length;i++) {
+    const previous=readings[i-1], current=readings[i];
+    const start=taipeiTimestamp(previous.date,previous.time);
+    const finish=taipeiTimestamp(current.date,current.time);
+    const days=(finish-start)/86400000;
+    if(!(days>0))continue;
+    const avg=(current.reading-previous.reading)/days;
+    if(!Number.isFinite(avg)||avg<0)continue;
+    segments.push({start,finish,days,avg,date:current.date,time:current.time,used:current.reading-previous.reading});
+  }
+  return segments;
+}
+function svgNode(name,attributes={},value) {
+  const el=document.createElementNS('http://www.w3.org/2000/svg',name);
+  for(const [key,v] of Object.entries(attributes))el.setAttribute(key,String(v));
+  if(value!==undefined)el.textContent=value;
+  return el;
+}
+function drawTrend() {
+  const segments=dailyIntervals(),latest=segments.at(-1),previous=segments.at(-2);
+  const chart=$('trendChart'),empty=$('trendEmpty'),pct=$('changePercent');
+  pct.className='flat';
+  chart.replaceChildren();
+  $('latestDaily').textContent=latest?num(latest.avg,2)+' 度':'—';
+  $('latestDetail').textContent=latest?`${latest.date} ${latest.time} 截止`:'—';
+  if(previous&&latest) {
+    if(previous.avg===0) {
+      pct.textContent='—';
+      $('compareDetail').textContent='前段用電為 0，無法計算百分比';
+    } else {
+      const percent=(latest.avg-previous.avg)/previous.avg*100;
+      const isFlat=Math.abs(percent)<0.05;
+      pct.textContent=isFlat?'0.0%':(percent>0?'+':'−')+num(Math.abs(percent),1)+'%';
+      pct.className=isFlat?'flat':percent>0?'up':'down';
+      $('compareDetail').textContent=isFlat?'與前一段相近':percent>0?'日均用電增加':'日均用電減少';
+    }
+  } else $('compareDetail').textContent='至少需要三筆讀數';
+  if(!segments.length) {
+    chart.setAttribute('hidden','');empty.hidden=false;return;
+  }
+  empty.hidden=true;chart.removeAttribute('hidden');
+  // 最近 20 個記錄區間；橫軸按真實時間間隔排列，而非假設每天固定抄表。
+  const compact=window.matchMedia('(max-width:620px)').matches;
+  const w=compact?350:720,h=compact?236:260;
+  const points=segments.slice(-20),left=compact?43:57,right=compact?337:690,top=20,bottom=compact?182:207;
+  chart.setAttribute('viewBox',`0 0 ${w} ${h}`);
+  const first=points[0].finish,last=points.at(-1).finish;
+  const minX=first, spanX=Math.max(1,last-minX);
+  const maxAvg=Math.max(0.1,...points.map(p=>p.avg));
+  const maxY=maxAvg*1.16;
+  const X=(p,index)=>points.length===1?(left+right)/2:left+(p.finish-minX)/spanX*(right-left);
+  const Y=p=>bottom-p.avg/maxY*(bottom-top);
+  for(let i=0;i<=4;i++) {
+    const value=maxY*i/4, y=bottom-(bottom-top)*i/4;
+    chart.append(svgNode('line',{x1:left,y1:y,x2:right,y2:y,stroke:'#dfebf2','stroke-width':1}));
+    chart.append(svgNode('text',{x:left-9,y:y+4,'text-anchor':'end','font-size':12,fill:'#6d8393'},num(value,value>=10?0:1)));
+  }
+  chart.append(svgNode('text',{x:compact?5:13,y:13,'font-size':12,fill:'#647c8b'},'度/日'));
+  // 少量刻度，避免標籤擁擠。單點時同樣標示日期。
+  const tickIds=[0,Math.floor((points.length-1)/2),points.length-1];
+  for(const i of [...new Set(tickIds)]) {
+    const p=points[i], x=X(p,i);
+    chart.append(svgNode('line',{x1:x,y1:bottom,x2:x,y2:bottom+5,stroke:'#a8b9c7'}));
+    chart.append(svgNode('text',{x,y:bottom+23,'text-anchor':'middle','font-size':12,fill:'#5f7789'},p.date.slice(5).replace('-','/')));
+  }
+  if(points.length>1) {
+    const path=points.map((p,i)=>(i===0?'M':'L')+X(p,i).toFixed(2)+' '+Y(p).toFixed(2)).join(' ');
+    chart.append(svgNode('path',{d:path,fill:'none',stroke:'#2d7faf','stroke-width':3,'stroke-linecap':'round','stroke-linejoin':'round'}));
+  }
+  for(let i=0;i<points.length;i++) {
+    const p=points[i];
+    const dot=svgNode('circle',{cx:X(p,i),cy:Y(p),r:i===points.length-1?5.5:4,fill:i===points.length-1?'#134f75':'#4b9ccc',stroke:'#fff','stroke-width':1.5});
+    dot.append(svgNode('title',{},`${p.date} ${p.time}　日均 ${num(p.avg,2)} 度／日；該區間 ${kwhText(p.used)}`));
+    chart.append(dot);
+  }
+  chart.append(svgNode('text',{x:right,y:bottom+46,'text-anchor':'end','font-size':11,fill:'#72899a'},`最近 ${points.length} 段`));
+}
+
+// 以固定統計規則進行本機「智慧分析」，不宣稱呼叫雲端 AI 模型。
+// 不使用讀數推測電器原因。資料不足時不輸出貌似精確的金額。
+function median(values) {
+  if(!values.length) return 0;
+  const sorted=[...values].sort((a,b)=>a-b),mid=Math.floor(sorted.length/2);
+  return sorted.length%2 ? sorted[mid] : (sorted[mid-1]+sorted[mid])/2;
+}
+function summarizeRate(parts) {
+  const values=parts.map(p=>p.avg);
+  const mid=median(values);
+  // 裁剪特別極端的區間，避免一次偶發讀數左右整個月的預測。
+  const lower=mid>0?mid*0.5:0;
+  const upper=mid>0?mid*1.5:Math.max(1,...values);
+  let sum=0,denom=0;
+  parts.forEach((p,i)=>{
+    const weight=Math.min(p.days,7)*Math.pow(0.85,parts.length-1-i);
+    sum+=Math.max(lower,Math.min(upper,p.avg))*weight;denom+=weight;
+  });
+  const daily=denom?sum/denom:0;
+  const mad=median(values.map(v=>Math.abs(v-mid)));
+  const pct= Math.max(0.18,Math.min(0.5,0.12+1.6*mad/Math.max(1,daily)+(parts.length<=4?0.06:0)));
+  return {daily,mid,mad,pct};
+}
+function estimateFutureFee(daily,from) {
+  const end=from+30*86400000;
+  if(from<RATE_START || !(daily>=0))return null;
+  const summer=seasonShare(from,end);
+  return (price60Days(daily*60,true)*summer+price60Days(daily*60,false)*(1-summer))/2;
+}
+function spanDays(parts) {return parts.reduce((v,p)=>v+p.days,0)}
+function smartAnalysis(segments,now=Date.now()) {
+  const usable=segments.filter(s=>s.days>=0.75 && s.days<=45 && Number.isFinite(s.avg) && s.avg>=0);
+  const recent=usable.slice(-8);
+  const totalDays=spanDays(recent);
+  if(recent.length<3 || totalDays<7) {
+    return {ready:false,reason:`目前有 ${recent.length} 段有效區間（共 ${num(totalDays,1)} 天）。至少需要 3 段、涵蓋 7 天，才會提供預測；不足時仍可查看上方折線圖。`};
+  }
+  const latest=segments.at(-1);
+  if(!latest || !Number.isFinite(latest.finish) || latest.finish>now+2*3600000) {
+    return {ready:false,reason:'最新讀數時間晚於目前時間，請先檢查日期與時間。'};
+  }
+  const ageDays=(now-latest.finish)/86400000;
+  if(ageDays>30) {
+    return {ready:false,reason:`最新讀數已是 ${num(ageDays,0)} 天前。請先新增近期讀數，再進行未來 30 天預測。`};
+  }
+  if(latest.days<0.75) {
+    return {ready:false,reason:'最近一次讀數間隔不足 18 小時，波動容易失真。請累積較長時間的資料再進行預測。'};
+  }
+  const s=summarizeRate(recent);
+  const cv=s.mad/Math.max(1,s.mid);
+  const confidence=(recent.length>=6 && totalDays>=21 && cv<=0.23 && ageDays<=7)?'較穩定':
+    (recent.length>=4 && totalDays>=14 && cv<=0.4 && ageDays<=14)?'一般':'初步';
+  const forecast=s.daily*30,lo=forecast*(1-s.pct),hi=forecast*(1+s.pct);
+  const fee=estimateFutureFee(s.daily,latest.finish);
+  const feeLo=estimateFutureFee(lo/30,latest.finish),feeHi=estimateFutureFee(hi/30,latest.finish);
+  let change=null,anomaly=null,baseline=null;
+  const older=usable.filter(sg=>sg.finish<=latest.start).slice(-7);
+  if(older.length>=3 && spanDays(older)>=7) {
+    const b=summarizeRate(older);baseline=b.mid;
+    if(baseline>0) {
+      change=(latest.avg-baseline)/baseline*100;
+      const threshold=Math.max(3,baseline*0.35,b.mad*2.5);
+      if(latest.avg-baseline>threshold) anomaly='high';
+      else if(baseline-latest.avg>threshold) anomaly='low';
+    }
+  }
+  const direction=change===null?'持續觀察':Math.abs(change)<5?'大致持平':change>0?'近期上升':'近期下降';
+  const paragraphs=[];
+  if(anomaly==='high')paragraphs.push(`⚠ 最近區間平均 ${num(latest.avg,1)} 度／日，比先前歷史基準 ${num(baseline,1)} 度／日高約 ${num(change,1)}%。建議先確認讀數是否正確，再持續觀察是否維持偏高。`);
+  else if(anomaly==='low')paragraphs.push(`最近區間日均用電較先前歷史基準減少約 ${num(Math.abs(change),1)}%，屬於較明顯變化。`);
+  else if(change!==null)paragraphs.push(`最近區間日均 ${num(latest.avg,1)} 度，與先前基準相比 ${change>=0?'增加':'減少'} ${num(Math.abs(change),1)}%；目前未達明顯異常提醒門檻。`);
+  else paragraphs.push('歷史區間尚不足以判斷「異常增加」；預測已可初步計算，建議持續記錄。');
+  paragraphs.push(`依最近 ${recent.length} 段、共 ${num(totalDays,1)} 天有效讀數推估，未來 30 天約使用 ${num(forecast,0)} 度；請將預估範圍視為不同用電情境，不是保證值。`);
+  if(ageDays>14)paragraphs.push('最近一筆紀錄已超過 14 天，近期生活習慣可能不同，預測參考價值較低。');
+  else if(confidence==='初步')paragraphs.push('樣本期間尚短，分析屬初步結果；建議固定間隔記錄，累積 2～4 週後再比較。');
+  else if(cv>0.3)paragraphs.push('歷史用電波動偏大，實際電費可能偏離預估範圍。');
+  return {ready:true,latest,ageDays,confidence,anomaly,baseline,change,direction,daily:s.daily,
+    forecast,lo,hi,fee,feeLo,feeHi,paragraphs,parts:recent.length,totalDays};
+}
+function drawSmart() {
+  const report=smartAnalysis(dailyIntervals());
+  $('smartEmpty').hidden=report.ready;
+  $('smartContent').hidden=!report.ready;
+  if(!report.ready){$('smartEmpty').textContent=report.reason;return;}
+  const status=$('smartStatus');
+  status.className='signal '+(report.anomaly==='high'?'warn':report.anomaly==='low'?'good':'muted');
+  status.textContent=report.anomaly==='high'?'用電明顯偏高':report.anomaly==='low'?'用電明顯下降':'用電持續觀察';
+  $('smartConfidence').textContent='資料可靠程度：'+report.confidence;
+  $('futureUsage').textContent=num(report.forecast,0)+' 度';
+  $('forecastRange').textContent='情境範圍 '+num(report.lo,0)+'～'+num(report.hi,0)+' 度';
+  $('futureCost').textContent=report.fee===null?'—':moneyText(report.fee);
+  $('futureCostRange').textContent=report.fee===null?'不適用目前費率':`流動電費概算 ${moneyText(report.feeLo)}～${moneyText(report.feeHi)}`;
+  $('recentDirection').textContent=num(report.daily,1)+' 度／日';
+  $('recentExplain').textContent=report.direction+' · 從最近讀數起算 30 天';
+  const narrative=$('smartNarrative');narrative.replaceChildren();
+  for(const t of report.paragraphs)narrative.append(elem('p',t));
+}
+
+function draw() {
+  $('recordCount').textContent=readings.length+' 筆';
+  drawTrend();
+  drawSmart();
+  if(readings.length<2) {
+    $('resultRange').textContent=readings.length?'已記錄第一筆':'新增兩筆讀數即可計算';
+    $('totalUsage').textContent=$('lastUsage').textContent=$('lastCost').textContent='—';
+    $('estimateNote').textContent='電費為概算，與正式帳單可能不同。';
+  } else {
+    const first=readings[0],last=readings.at(-1),prev=readings.at(-2),recent=interval(prev,last);
+    $('resultRange').textContent=`${first.date} ～ ${last.date}`;
+    $('totalUsage').textContent=kwhText(last.reading-first.reading);
+    $('lastUsage').textContent=kwhText(recent.used);
+    $('lastCost').textContent=recent.fee===null?'—':moneyText(recent.fee);
+    $('estimateNote').textContent=recent.fee===null?'此區間不提供電費預估。':'預估電費非台電正式帳單，短期間的推估誤差可能較大。';
+  }
+  const list=$('recordList');list.replaceChildren();
+  if(!readings.length){list.append(elem('div','尚無記錄','empty'));return;}
+  for(let i=readings.length-1;i>=0;i--) {
+    const r=readings[i],d=i>0?interval(readings[i-1],r):null;
+    const row=elem('div',undefined,'rline');
+    appendCell(row,'日期／時間',r.date,r.time);
+    appendCell(row,'累計度數',num(r.reading,Math.abs(r.reading-Math.round(r.reading))<1e-8?0:2),'kWh','value');
+    appendCell(row,'使用度數',d?kwhText(d.used):'—');
+    appendCell(row,'預估電費',d&&d.fee!==null?moneyText(d.fee):'—');
+    const actions=elem('div',undefined,'actions');
+    const edit=elem('button','修改');edit.type='button';edit.setAttribute('aria-label',`修改 ${r.date} ${r.time} 的讀數`);
+    edit.onclick=()=>{
+      editingId=r.id;$('readingDate').value=r.date;$('readingTime').value=r.time;$('readingValue').value=String(r.reading);
+      $('submitBtn').textContent='儲存修改';$('cancelEdit').hidden=false;$('status').hidden=true;
+      $('inputTitle').scrollIntoView({block:'center',behavior:'smooth'});$('readingValue').focus({preventScroll:true});
+    };
+    const remove=elem('button','刪除','del');remove.type='button';remove.setAttribute('aria-label',`刪除 ${r.date} ${r.time} 的讀數`);
+    remove.onclick=()=>{
+      if(!confirm(`刪除 ${r.date} ${r.time} 的記錄？`))return;
+      readings=readings.filter(item=>item.id!==r.id);const ok=save();if(editingId===r.id)resetForm();draw();if(ok)alertUser('已刪除');
+    };
+    actions.append(edit,remove);row.append(actions);list.append(row);
+  }
+}
+// CSV 可用 Excel 開啟，也支援匯回本工具（含 B3 舊版匯出的 CSV）。
+function csvQuote(value) {
+  let s=String(value??'');if(/^[=+@\-\t\r]/.test(s)) s="'"+s;
+  return '"'+s.replaceAll('"','""')+'"';
+}
+$('csvBtn').onclick=()=>{
+  if(!readings.length){alertUser('目前沒有記錄可匯出。',true);return;}
+  const data=[['日期','時間','累計電錶度數(kWh)','區間用電(kWh)','區間預估電費(NT$)','說明'],...readings.map((r,i)=>{
+    const d=i>0?interval(readings[i-1],r):null;
+    return [r.date,r.time,r.reading,d?d.used:'',d&&d.fee!==null?Math.round(d.fee):'',d?(d.reason||'僅供參考'):'第一筆'];
+  })];
+  const blob=new Blob(['\uFEFF'+data.map(a=>a.map(csvQuote).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='電錶讀數_'+taiwanNow().date+'.csv';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+};
+function parseCsv(text) {
+  const lines=[];let line=[],cell='',quoted=false;
+  text=text.replace(/^\uFEFF/,'');
+  for(let i=0;i<text.length;i++) {
+    const c=text[i];
+    if(quoted) { if(c==='"'&&text[i+1]==='"'){cell+='"';i++;}else if(c==='"')quoted=false;else cell+=c; }
+    else if(c==='"')quoted=true;
+    else if(c===','){line.push(cell);cell='';}
+    else if(c==='\n'||c==='\r') {if(c==='\r'&&text[i+1]==='\n')i++;line.push(cell);if(line.some(s=>s!==''))lines.push(line);line=[];cell='';}
+    else cell+=c;
+  }
+  if(quoted)throw Error('CSV 格式不正確。');
+  line.push(cell);if(line.some(s=>s!==''))lines.push(line);
+  return lines;
+}
+$('importBtn').onclick=()=>$('csvInput').click();
+$('csvInput').addEventListener('change',async event=>{
+  const file=event.target.files[0];event.target.value='';if(!file)return;
+  try {
+    if(file.size>2_000_000)throw Error('檔案過大。');
+    const table=parseCsv(await file.text());
+    if(table.length<2||table[0][0]!=='日期'||table[0][1]!=='時間'||!table[0][2].includes('度數'))throw Error('請選擇本工具匯出的 CSV。');
+    let merged=[...readings],added=0,identical=0;
+    for(const cells of table.slice(1)) {
+      if(cells.length<3)throw Error('CSV 欄位不足。');
+      const date=cells[0].trim(),time=cells[1].trim(),reading=Number(cells[2].replaceAll(',','').trim());
+      if(cells[2].trim()===''||!Number.isFinite(taipeiTimestamp(date,time))||!Number.isFinite(reading)||reading<0)throw Error('CSV 包含錯誤的日期、時間或度數。');
+      const present=merged.find(r=>r.date===date&&r.time===time);
+      if(present) {
+        if(Math.abs(present.reading-reading)>1e-8)throw Error(`${date} ${time} 的度數與現有記錄不同，匯入已取消。`);
+        identical++;continue;
+      }
+      merged.push({id:'i'+Date.now().toString(36)+Math.random().toString(36).slice(2),date,time,reading});added++;
+    }
+    merged=tidy(merged);
+    if(merged.length!==readings.length+added)throw Error('匯入筆數超過上限，或有不正確的記錄。');
+    for(let i=1;i<merged.length;i++) if(merged[i].reading<merged[i-1].reading)throw Error('匯入後電錶累計度數出現倒退，請檢查檔案。');
+    if(!added){alertUser(`沒有新記錄（${identical} 筆已存在）。`);return;}
+    if(!confirm(`確定匯入 ${added} 筆新記錄？`))return;
+    readings=merged;const ok=save();draw();if(ok)alertUser(`成功匯入 ${added} 筆記錄。`);
+  }catch(error){alertUser(error.message||'CSV 匯入失敗。',true);}
+});
+$('clearBtn').onclick=()=>{
+  if(!readings.length)return;
+  if(!confirm('確定清空全部記錄？此操作無法還原。'))return;
+  readings=[];const ok=save();resetForm();draw();if(ok)alertUser('已清空');
+};
+load();defaultTime();draw();
+</script>
+</body>
+</html>
