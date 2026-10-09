@@ -34,7 +34,7 @@
       background:#f1f6f9;
       color:var(--text);
     }
-    input,button { font:inherit }
+    input,button,textarea { font:inherit }
     button { cursor:pointer; transition:.18s ease }
     [hidden] { display:none !important }
     .wrap { max-width:1120px; margin:0 auto; padding:24px 18px 42px }
@@ -73,13 +73,15 @@
     .form-fields { display:grid; grid-template-columns:1fr 1fr; gap:13px }
     .field:last-child { grid-column:1/-1 }
     label { display:block; font-size:13px; font-weight:800; color:#496877; margin-bottom:7px }
-    input[type=date],input[type=time],input[type=number] {
+    input[type=date],input[type=time],input[type=number],textarea {
       width:100%; min-width:0; min-height:50px; border-radius:12px; border:1px solid var(--border-strong);
       background:#fff; color:#15394d; padding:11px 13px; font-size:16px;
       box-shadow:inset 0 1px 2px rgba(18,73,95,.03);
     }
-    input::placeholder { color:#90a4b1 }
-    input:hover { border-color:#a9c3cd }
+    textarea { width:100%; min-width:0; min-height:72px; resize:vertical; line-height:1.6 }
+    .note-input { grid-column:1/-1 }
+    input::placeholder,textarea::placeholder { color:#90a4b1 }
+    input:hover,textarea:hover { border-color:#a9c3cd }
     input:focus-visible,button:focus-visible,summary:focus-visible {
       outline:3px solid rgba(47,144,163,.25);
       outline-offset:2px;
@@ -118,7 +120,7 @@
     .count { font-size:12px; color:var(--muted-2); font-weight:700 }
     .record-tools { display:flex; align-items:center; gap:7px; flex-wrap:wrap }
     .record-tools .btn { min-height:36px; padding:7px 12px; font-size:12px; box-shadow:none }
-    .rline { display:grid; grid-template-columns:1.15fr 1fr .9fr 1fr auto; gap:10px; align-items:center; border-bottom:1px solid #e8eef2; padding:13px 8px; font-size:13px }
+    .rline { display:grid; grid-template-columns:1.05fr .8fr .9fr 1fr 1.25fr auto; gap:10px; align-items:center; border-bottom:1px solid #e8eef2; padding:13px 8px; font-size:13px }
     .rline.header { color:#677e8f; background:#f5f9fb; font-weight:800; border:0; border-radius:10px; font-size:12px; padding:10px 8px }
     .value { color:var(--brand-deep); font-weight:900 }
     .secondary-text { color:var(--muted-2); font-size:11px; margin-top:4px }
@@ -130,6 +132,8 @@
     .actions button.del { color:var(--danger) }
     .actions button:hover { background:#f0f6fa }
     .cell-label { display:none }
+    .note-cell { min-width:0; word-break:break-word; white-space:pre-wrap; color:#355767; line-height:1.55 }
+    .note-empty { color:#9daeb7 }
     .empty { color:#8293a2; text-align:center; padding:30px 12px; font-size:14px }
     .foot { color:#738898; font-size:11px; margin:16px 4px; line-height:1.75 }
     .analytics { margin-top:16px }
@@ -151,10 +155,11 @@
     @media(max-width:760px) { .analytics-grid { grid-template-columns:minmax(0,1fr) } .comparison { grid-template-columns:1fr 1fr } }
     @media(max-width:390px) { .comparison { grid-template-columns:1fr 1fr; gap:8px } .compare-card {padding:12px} .compare-card strong {font-size:21px} }
     @media(max-width:760px) { .grid { grid-template-columns:1fr } .wrap { padding:12px 12px 30px } .panel { padding:18px } .top { padding:22px 20px; border-radius:20px } }
-    @media(max-width:620px) {
+    @media(max-width:960px) {
       .rline.header { display:none }
       .rline { grid-template-columns:1fr 1fr; gap:12px 8px; margin-top:9px; border:1px solid #e5edf3; border-radius:13px; background:#fdfefe; padding:13px }
       .cell-label { display:block; color:#778c9e; font-size:11px; font-weight:700; margin-bottom:4px }
+      .note-cell { grid-column:1/-1 }
       .actions { grid-column:1/-1; border-top:1px dashed #e5edf3; padding-top:9px }
       .records-head { align-items:flex-start }
       .record-tools .btn { min-height:34px }
@@ -209,6 +214,7 @@
       .top h1 { font-size:28px }
       .record-tools .btn, .btn-row .btn { width:100% }
       .rline { grid-template-columns:1fr; gap:10px; padding:12px }
+      .note-cell { grid-column:1/-1 }
       .actions { justify-content:stretch }
       .actions button { flex:1 }
       .compare-card strong, .smart-metric strong { font-size:22px }
@@ -268,6 +274,7 @@
             <div class="field"><label for="readingDate">日期</label><input id="readingDate" type="date" required></div>
             <div class="field"><label for="readingTime">時間</label><input id="readingTime" type="time" step="60" required></div>
             <div class="field"><label for="readingValue">電錶累計度數（kWh）</label><input id="readingValue" type="number" inputmode="decimal" step="any" min="0" placeholder="例如 12065" required></div>
+            <div class="field note-input"><label for="readingNote">備註（選填）</label><textarea id="readingNote" rows="2" maxlength="300" placeholder="例如：開冷氣、關冷氣、外出"></textarea></div>
           </div>
           <div class="btn-row"><button class="btn" id="submitBtn" type="submit">儲存</button><button class="btn soft" id="cancelEdit" type="button" hidden>取消修改</button></div>
         </form>
@@ -322,10 +329,10 @@
           <input type="file" id="csvInput" accept=".csv,text/csv" hidden>
         </div>
       </div>
-      <div class="rline header" aria-hidden="true"><span>日期／時間</span><span>累計度數</span><span>使用度數</span><span>預估電費</span><span style="text-align:right">操作</span></div>
+      <div class="rline header" aria-hidden="true"><span>日期／時間</span><span>累計度數</span><span>使用度數</span><span>預估電費</span><span>備註</span><span style="text-align:right">操作</span></div>
       <div id="recordList"><div class="empty">尚無記錄</div></div>
     </section>
-    <footer class="foot">資料僅保存在此瀏覽器、不上傳雲端；請定期匯出 CSV 備份。智慧分析為本機統計預測，電費僅供參考。</footer>
+    <footer class="foot">電錶讀數與備註只保存在這個瀏覽器，不會公開到 GitHub；請定期匯出 CSV 備份。智慧分析為本機統計預測，電費僅供參考。</footer>
   </main>
 <script>
 'use strict';
@@ -383,11 +390,12 @@ function interval(previous,current) {
   const fee=(price60Days(projected,true)*share+price60Days(projected,false)*(1-share))*days/60;
   return {used,fee,reason:''};
 }
+function safeNote(text) { return typeof text==='string'?text.slice(0,300):''; }
 function isValidReading(r) {
   return r&&typeof r.id==='string'&&typeof r.date==='string'&&typeof r.time==='string'&&Number.isFinite(taipeiTimestamp(r.date,r.time))&&typeof r.reading==='number'&&Number.isFinite(r.reading)&&r.reading>=0&&r.reading<=1e10;
 }
 function tidy(items) {
-  return Array.isArray(items)?items.filter(isValidReading).slice(0,3000).sort((a,b)=>taipeiTimestamp(a.date,a.time)-taipeiTimestamp(b.date,b.time)):[];
+  return Array.isArray(items)?items.filter(isValidReading).slice(0,3000).map(r=>({...r,note:safeNote(r.note)})).sort((a,b)=>taipeiTimestamp(a.date,a.time)-taipeiTimestamp(b.date,b.time)):[];
 }
 function alertUser(message,error=false) {
   const node=$('status');node.textContent=message;node.classList.toggle('error',error);node.hidden=false;
@@ -404,7 +412,7 @@ function defaultTime() {
   const now=taiwanNow();$('readingDate').value=now.date;$('readingTime').value=now.time;
 }
 function resetForm() {
-  editingId=null;$('submitBtn').textContent='儲存';$('cancelEdit').hidden=true;$('readingValue').value='';defaultTime();
+  editingId=null;$('submitBtn').textContent='儲存';$('cancelEdit').hidden=true;$('readingValue').value='';$('readingNote').value='';defaultTime();
 }
 function validate(candidate,otherRows=readings) {
   if(!Number.isFinite(taipeiTimestamp(candidate.date,candidate.time))) return '日期或時間不正確。';
@@ -419,7 +427,7 @@ function validate(candidate,otherRows=readings) {
 $('entryForm').addEventListener('submit',event=>{
   event.preventDefault();
   const raw=$('readingValue').value.trim();
-  const r={id:editingId||('r'+Date.now().toString(36)+Math.random().toString(36).slice(2)),date:$('readingDate').value,time:$('readingTime').value,reading:raw===''?NaN:Number(raw)};
+  const r={id:editingId||('r'+Date.now().toString(36)+Math.random().toString(36).slice(2)),date:$('readingDate').value,time:$('readingTime').value,reading:raw===''?NaN:Number(raw),note:safeNote($('readingNote').value.trim())};
   const error=validate(r); if(error) {alertUser(error,true);return;}
   if(editingId) readings=readings.map(item=>item.id===editingId?r:item);
   else readings.push(r);
@@ -636,10 +644,13 @@ function draw() {
     appendCell(row,'累計度數',num(r.reading,Math.abs(r.reading-Math.round(r.reading))<1e-8?0:2),'kWh','value');
     appendCell(row,'使用度數',d?kwhText(d.used):'—');
     appendCell(row,'預估電費',d&&d.fee!==null?moneyText(d.fee):'—');
+    const noteCell=elem('div',undefined,'note-cell');
+    noteCell.append(elem('span','備註','cell-label'),elem('div',r.note||'—',r.note?'':'note-empty'));
+    row.append(noteCell);
     const actions=elem('div',undefined,'actions');
     const edit=elem('button','修改');edit.type='button';edit.setAttribute('aria-label',`修改 ${r.date} ${r.time} 的讀數`);
     edit.onclick=()=>{
-      editingId=r.id;$('readingDate').value=r.date;$('readingTime').value=r.time;$('readingValue').value=String(r.reading);
+      editingId=r.id;$('readingDate').value=r.date;$('readingTime').value=r.time;$('readingValue').value=String(r.reading);$('readingNote').value=r.note||'';
       $('submitBtn').textContent='儲存修改';$('cancelEdit').hidden=false;$('status').hidden=true;
       $('inputTitle').scrollIntoView({block:'center',behavior:'smooth'});$('readingValue').focus({preventScroll:true});
     };
@@ -658,9 +669,9 @@ function csvQuote(value) {
 }
 $('csvBtn').onclick=()=>{
   if(!readings.length){alertUser('目前沒有記錄可匯出。',true);return;}
-  const data=[['日期','時間','累計電錶度數(kWh)','區間用電(kWh)','區間預估電費(NT$)','說明'],...readings.map((r,i)=>{
+  const data=[['日期','時間','累計電錶度數(kWh)','區間用電(kWh)','區間預估電費(NT$)','說明','備註'],...readings.map((r,i)=>{
     const d=i>0?interval(readings[i-1],r):null;
-    return [r.date,r.time,r.reading,d?d.used:'',d&&d.fee!==null?Math.round(d.fee):'',d?(d.reason||'僅供參考'):'第一筆'];
+    return [r.date,r.time,r.reading,d?d.used:'',d&&d.fee!==null?Math.round(d.fee):'',d?(d.reason||'僅供參考'):'第一筆',safeNote(r.note)];
   })];
   const blob=new Blob(['\uFEFF'+data.map(a=>a.map(csvQuote).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'});
   const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='電錶讀數_'+taiwanNow().date+'.csv';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
@@ -687,24 +698,27 @@ $('csvInput').addEventListener('change',async event=>{
     if(file.size>2_000_000)throw Error('檔案過大。');
     const table=parseCsv(await file.text());
     if(table.length<2||table[0][0]!=='日期'||table[0][1]!=='時間'||!table[0][2].includes('度數'))throw Error('請選擇本工具匯出的 CSV。');
-    let merged=[...readings],added=0,identical=0;
+    const noteColumn=table[0].findIndex(h=>h.trim()==='備註');
+    let merged=readings.map(r=>({...r})),added=0,identical=0,notesUpdated=0;
     for(const cells of table.slice(1)) {
       if(cells.length<3)throw Error('CSV 欄位不足。');
       const date=cells[0].trim(),time=cells[1].trim(),reading=Number(cells[2].replaceAll(',','').trim());
+      const note=noteColumn>=0?safeNote((cells[noteColumn]||'').trim()):'';
       if(cells[2].trim()===''||!Number.isFinite(taipeiTimestamp(date,time))||!Number.isFinite(reading)||reading<0)throw Error('CSV 包含錯誤的日期、時間或度數。');
       const present=merged.find(r=>r.date===date&&r.time===time);
       if(present) {
         if(Math.abs(present.reading-reading)>1e-8)throw Error(`${date} ${time} 的度數與現有記錄不同，匯入已取消。`);
+        if(note && !present.note){present.note=note;notesUpdated++;}
         identical++;continue;
       }
-      merged.push({id:'i'+Date.now().toString(36)+Math.random().toString(36).slice(2),date,time,reading});added++;
+      merged.push({id:'i'+Date.now().toString(36)+Math.random().toString(36).slice(2),date,time,reading,note});added++;
     }
     merged=tidy(merged);
     if(merged.length!==readings.length+added)throw Error('匯入筆數超過上限，或有不正確的記錄。');
     for(let i=1;i<merged.length;i++) if(merged[i].reading<merged[i-1].reading)throw Error('匯入後電錶累計度數出現倒退，請檢查檔案。');
-    if(!added){alertUser(`沒有新記錄（${identical} 筆已存在）。`);return;}
-    if(!confirm(`確定匯入 ${added} 筆新記錄？`))return;
-    readings=merged;const ok=save();draw();if(ok)alertUser(`成功匯入 ${added} 筆記錄。`);
+    if(!added&&!notesUpdated){alertUser(`沒有新記錄（${identical} 筆已存在）。`);return;}
+    if(!confirm(`確定匯入 ${added} 筆新記錄${notesUpdated?`，並補上 ${notesUpdated} 筆原本空白的備註`:''}？不會覆蓋既有資料。`))return;
+    readings=merged;const ok=save();draw();if(ok)alertUser(`已匯入 ${added} 筆記錄${notesUpdated?`、補上 ${notesUpdated} 筆備註`:''}。`);
   }catch(error){alertUser(error.message||'CSV 匯入失敗。',true);}
 });
 $('clearBtn').onclick=()=>{
