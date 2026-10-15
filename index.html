@@ -312,7 +312,7 @@
             <div class="tou-only tou-inputs">
               <div class="field"><label for="meter09">09｜總累計度數（kWh）</label><input id="meter09" type="number" inputmode="decimal" step="any" min="0" placeholder="電表畫面 09"></div>
               <div class="field"><label for="meter10">10｜尖峰累計度數（kWh）</label><input id="meter10" type="number" inputmode="decimal" step="any" min="0" placeholder="電表畫面 10"></div>
-              <div class="field"><label for="meter14">14｜半尖峰累計度數（kWh）</label><input id="meter14" type="number" inputmode="decimal" step="any" min="0" placeholder="沒有顯示請先確認，不要猜數字"></div>
+              <div class="field"><label for="meter14">14｜半尖峰累計度數（選填，kWh）</label><input id="meter14" type="number" inputmode="decimal" step="any" min="0" placeholder="電表未顯示可留空，不要填 0 代替"></div>
               <div class="field"><label for="meter18">18｜離峰累計度數（kWh）</label><input id="meter18" type="number" inputmode="decimal" step="any" min="0" placeholder="電表畫面 18"></div>
             </div>
             <div class="field note-input"><label for="readingNote">備註（選填）</label><textarea id="readingNote" rows="2" maxlength="300" placeholder="例如：開冷氣、關冷氣、外出"></textarea></div>
@@ -320,7 +320,7 @@
           <div class="btn-row"><button class="btn" id="submitBtn" type="submit">儲存</button><button class="btn soft" id="cancelEdit" type="button" hidden>取消修改</button></div>
         </form>
         <div id="status" class="notice" role="status" aria-live="polite" hidden></div>
-        <p class="mini" id="entryHelp">09 為總度數；10、14、18 分別記錄尖峰、半尖峰、離峰。首次填寫作為新制基準，第二筆起才計算各時段差額。</p>
+        <p class="mini" id="entryHelp">09 為總度數；10 尖峰、18 離峰需填寫。14 半尖峰如電表未顯示可留空，無須猜數字；首次填寫作為新制基準。</p>
         <div class="tou-only tariff-card">
           <label for="touPlan">時間電價方案</label>
           <select id="touPlan">
@@ -340,7 +340,7 @@
           <div class="stat"><span id="lastCostLabel">最近區間預估電費</span><strong id="lastCost">—</strong></div>
         </div>
         <p class="mini" id="estimateNote">新舊計費獨立計算，不跨模式相減。</p>
-        <div class="tou-only tou-breakdown" id="touBreakdown">尖峰／半尖峰／離峰差額將從第二筆完整記錄開始顯示。</div>
+        <div class="tou-only tou-breakdown" id="touBreakdown">尖峰／離峰差額將從第二筆記錄開始顯示；14 未提供時顯示「未提供」。</div>
       </section>
     </div>
     <section class="panel analytics" aria-labelledby="analysisTitle">
@@ -443,8 +443,15 @@ function price60Days(usage,summer) {
 function readingTotal(r,mode=viewMode){return mode==='tou'?r.m09:r.reading;}
 function isSummer(ms){const d=new Date(ms+8*3600000);const m=d.getUTCMonth()+1;return m>=6&&m<=9;}
 function touDiff(previous,current){
-  const keys=['m09','m10','m14','m18'];
-  const result={};for(const key of keys){result[key]=current[key]-previous[key]; if(result[key]<-1e-7)return null;}
+  const result={};
+  for(const key of ['m09','m10','m18']){
+    result[key]=current[key]-previous[key];
+    if(result[key]<-1e-7)return null;
+  }
+  // 14 未出現在電表時保留 null，絕不可轉成 0 或猜測半尖峰用電。
+  result.m14=Number.isFinite(previous.m14)&&Number.isFinite(current.m14)
+    ? current.m14-previous.m14 : null;
+  if(result.m14!==null&&result.m14< -1e-7)return null;
   return result;
 }
 function interval(previous,current,mode=viewMode){
@@ -461,26 +468,30 @@ function interval(previous,current,mode=viewMode){
   }
   const diff=touDiff(previous,current);
   if(!diff)return {used,fee:null,reason:'分時計數器倒退，請確認是否換表或讀數錯誤'};
-  const grouped=diff.m10+diff.m14+diff.m18;
-  const mismatch=Math.abs(used-grouped)>0.1;
   if(a<TOU_START)return {used,fee:null,reason:'不可跨越新制啟用日期'};
   if(!touPlan)return {used,fee:null,diff,reason:'尚未選擇台電二段式或三段式方案'};
-  if(mismatch)return {used,fee:null,diff,reason:`09 差額 ${num(used,2)} 度與 10＋14＋18 差額 ${num(grouped,2)} 度不一致；可能有其他計數器（如 22），暫不計費`};
+  // 三段式必須真的抄到前後兩筆 14，否則只能記度數，不可自行補 0 計價。
+  if(touPlan==='3'&&diff.m14===null)return {used,fee:null,diff,reason:'14 半尖峰讀數未提供；記錄已保留，但三段式電費暫不估算'};
+  const grouped=diff.m10+diff.m18+(diff.m14??0);
+  const mismatch=Math.abs(used-grouped)>0.1;
+  if(mismatch)return {used,fee:null,diff,reason:`09 差額 ${num(used,2)} 度與已輸入時段差額合計 ${num(grouped,2)} 度不一致；可能有其他計數器（如 22），暫不計費`};
   if(isSummer(a)!==isSummer(b-1))return {used,fee:null,diff,reason:'跨越夏月與非夏月，請在 6/1 或 10/1 前後分別記錄才可估價'};
   const rates=TOU_RATES[touPlan][isSummer(a)?'summer':'winter'];
   if(rates.peak===null&&diff.m10>0.1)return {used,fee:null,diff,reason:'此季方案沒有尖峰價格，但 10 有新增度數，請先確認計數器及方案'};
-  if(rates.semi===null&&diff.m14>0.1)return {used,fee:null,diff,reason:'二段式沒有半尖峰價格，但 14 有新增度數，請先確認計數器及方案'};
-  const fee=diff.m10*(rates.peak??0)+diff.m14*(rates.semi??0)+diff.m18*rates.off;
+  if(rates.semi===null&&diff.m14!==null&&diff.m14>0.1)return {used,fee:null,diff,reason:'二段式沒有半尖峰價格，但 14 有新增度數，請先確認計數器及方案'};
+  const fee=diff.m10*(rates.peak??0)+(diff.m14??0)*(rates.semi??0)+diff.m18*rates.off;
   return {used,fee,diff,reason:'新制時間電價區間流動電費概算（不含基本費／超量加價）'};
 }
 function safeNote(text) { return typeof text==='string'?text.slice(0,300):''; }
 function isValidReading(r,mode='old'){
   if(!r||typeof r.id!=='string'||typeof r.date!=='string'||typeof r.time!=='string'||!Number.isFinite(taipeiTimestamp(r.date,r.time)))return false;
-  const fields=mode==='tou'?['m09','m10','m14','m18']:['reading'];
-  return fields.every(k=>typeof r[k]==='number'&&Number.isFinite(r[k])&&r[k]>=0&&r[k]<=1e10);
+  const fields=mode==='tou'?['m09','m10','m18']:['reading'];
+  const requiredValid=fields.every(k=>typeof r[k]==='number'&&Number.isFinite(r[k])&&r[k]>=0&&r[k]<=1e10);
+  // 14 的 null 代表沒有讀數，不代表 0 度。舊版填入的有效數字照常保留。
+  return requiredValid&&(mode!=='tou'||r.m14==null||(typeof r.m14==='number'&&Number.isFinite(r.m14)&&r.m14>=0&&r.m14<=1e10));
 }
 function tidy(items,mode='old'){
-  return Array.isArray(items)?items.filter(r=>isValidReading(r,mode)).slice(0,3000).map(r=>({...r,note:safeNote(r.note)})).sort((a,b)=>taipeiTimestamp(a.date,a.time)-taipeiTimestamp(b.date,b.time)):[];
+  return Array.isArray(items)?items.filter(r=>isValidReading(r,mode)).slice(0,3000).map(r=>({...r,...(mode==='tou'?{m14:r.m14??null}:{}),note:safeNote(r.note)})).sort((a,b)=>taipeiTimestamp(a.date,a.time)-taipeiTimestamp(b.date,b.time)):[];
 }
 function modeForDate(date,time){return taipeiTimestamp(date,time)>=TOU_START?'tou':'old';}
 function setMode(mode,{reset=true}={}){
@@ -491,7 +502,7 @@ function setMode(mode,{reset=true}={}){
   const label=viewMode==='tou'?'時間電價':'舊制累進電價';
   $('resultMode').textContent=label;$('recordsMode').textContent=label;
   $('modeCaption').textContent=viewMode==='tou'?'2026/10/15 起：09 總度數／10 尖峰／14 半尖峰／18 離峰；首次讀數為新制基準。':'2026/10/15 前：原本的單一累計度數與舊制住宅累進電價；不與新制相減。';
-  $('entryHelp').textContent=viewMode==='tou'?'每次輸入電錶上 09、10、14、18 的「累計」度數，無需手動計算差額。':'舊制輸入總累計度數；切換後的讀數請到時間電價頁面。';
+  $('entryHelp').textContent=viewMode==='tou'?'輸入電錶上的 09、10、18 累計度數；14 若未顯示可留空，不必猜測或填 0。三段式缺少 14 時仍可記錄，但不估算電費。':'舊制輸入總累計度數；切換後的讀數請到時間電價頁面。';
   $('lastCostLabel').textContent=viewMode==='tou'?'最近區間分時流動電費':'最近區間舊制預估電費';
   if(reset)resetForm();draw();
 }
@@ -528,12 +539,12 @@ function validate(candidate,otherRows=readings,mode=viewMode){
   if(!Number.isFinite(stamp))return '日期或時間不正確。';
   if(mode==='tou'&&stamp<TOU_START)return '10/15 以前的記錄請用舊制頁面。';
   if(mode==='old'&&stamp>=TOU_START)return '10/15 起的新記錄請改用時間電價頁面。';
-  if(!isValidReading(candidate,mode))return mode==='tou'?'請完整輸入 09、10、14、18 四組正確的累計度數。':'請輸入正確的舊制累計度數。';
+  if(!isValidReading(candidate,mode))return mode==='tou'?'請輸入正確的 09、10、18 累計度數；14 半尖峰如未顯示可以留空。':'請輸入正確的舊制累計度數。';
   const others=otherRows.filter(r=>r.id!==candidate.id);
   if(others.some(r=>r.date===candidate.date&&r.time===candidate.time))return '這個日期與時間已有記錄。';
   const sorted=[...others,candidate].sort((a,b)=>taipeiTimestamp(a.date,a.time)-taipeiTimestamp(b.date,b.time));
   const fields=mode==='tou'?['m09','m10','m14','m18']:['reading'];
-  for(let i=1;i<sorted.length;i++)for(const k of fields)if(sorted[i][k]<sorted[i-1][k]-0.000001)return (mode==='tou'?k.replace('m','')+' 編號':'舊制')+' 累計度數不能比上一筆低。若更換電表，請先保留舊資料並建立新的計數基準。';
+  for(let i=1;i<sorted.length;i++)for(const k of fields)if(sorted[i][k]!=null&&sorted[i-1][k]!=null&&sorted[i][k]<sorted[i-1][k]-0.000001)return (mode==='tou'?k.replace('m','')+' 編號':'舊制')+' 累計度數不能比上一筆低。若更換電表，請先保留舊資料並建立新的計數基準。';
   if(sorted.length>3000)return '記錄已達上限，請先匯出備份。';
   return '';
 }
@@ -548,7 +559,7 @@ $('entryForm').addEventListener('submit',event=>{
   event.preventDefault();
   const r={id:editingId||('r'+Date.now().toString(36)+Math.random().toString(36).slice(2)),date:$('readingDate').value,time:$('readingTime').value,note:safeNote($('readingNote').value.trim())};
   if(viewMode==='old'){const raw=$('readingValue').value.trim();r.reading=raw===''?NaN:Number(raw);}
-  else for(const [id,key] of [['meter09','m09'],['meter10','m10'],['meter14','m14'],['meter18','m18']]){const raw=$(id).value.trim();r[key]=raw===''?NaN:Number(raw);}
+  else for(const [id,key] of [['meter09','m09'],['meter10','m10'],['meter14','m14'],['meter18','m18']]){const raw=$(id).value.trim();r[key]=raw===''?(key==='m14'?null:NaN):Number(raw);}
   const error=validate(r);if(error){alertUser(error,true);return;}
   const backup=readings;
   readings=editingId?readings.map(item=>item.id===editingId?r:item):[...readings,r];
@@ -756,8 +767,8 @@ function draw(){
   if(statRows.length<2){
     $('resultRange').textContent=statRows.length?'已記錄第一筆基準':'新增兩筆讀數即可計算';
     $('totalUsage').textContent=$('lastUsage').textContent=$('lastCost').textContent='—';
-    $('estimateNote').textContent=viewMode==='tou'?'請於兩次讀數輸入 09／10／14／18。新制不與舊制相減。':'舊制資料獨立計算，不跨越切換日。';
-    $('touBreakdown').textContent='尖峰／半尖峰／離峰差額將從第二筆完整記錄開始顯示。';
+    $('estimateNote').textContent=viewMode==='tou'?'請於兩次讀數輸入 09／10／18；14 若沒有顯示可留空。新制不與舊制相減。':'舊制資料獨立計算，不跨越切換日。';
+    $('touBreakdown').textContent='尖峰／離峰差額將從第二筆記錄開始顯示；14 未提供時顯示「未提供」。';
   } else {
     const first=statRows[0],last=statRows.at(-1),prev=statRows.at(-2),recent=interval(prev,last);
     $('resultRange').textContent=`${first.date} ～ ${last.date}`;
@@ -768,7 +779,7 @@ function draw(){
     if(viewMode==='tou'&&recent.diff){
       $('touBreakdown').replaceChildren();
       [['09 總差額',recent.diff.m09],['10 尖峰',recent.diff.m10],['14 半尖峰',recent.diff.m14],['18 離峰',recent.diff.m18]].forEach(([label,value])=>{
-        const span=elem('span',`${label}：${kwhText(value)}`);span.style.display='block';$('touBreakdown').append(span);
+        const span=elem('span',`${label}：${value===null?'未提供':kwhText(value)}`);span.style.display='block';$('touBreakdown').append(span);
       });
     }else $('touBreakdown').textContent='需兩筆正常分時累計讀數才能計算各時段差額。';
   }
@@ -781,7 +792,7 @@ function draw(){
     const total=readingTotal(r),digits=Math.abs(total-Math.round(total))<1e-8?0:2;
     appendCell(row,viewMode==='tou'?'09 總度數':'舊制累計度數',num(total,digits),'kWh','value');
     if(viewMode==='tou'){
-      const details=elem('div',`10 尖峰 ${num(r.m10,2)} · 14 半尖峰 ${num(r.m14,2)} · 18 離峰 ${num(r.m18,2)}`,'reading-compact');
+      const details=elem('div',`10 尖峰 ${num(r.m10,2)} · 14 半尖峰 ${r.m14==null?'未提供':num(r.m14,2)} · 18 離峰 ${num(r.m18,2)}`,'reading-compact');
       row.children[1].append(details);
     }else if(taipeiTimestamp(r.date,r.time)>=TOU_START){
       row.children[1].append(elem('div','切換日後的舊格式；僅保留，不計新制','mode-flag'));
@@ -795,7 +806,7 @@ function draw(){
     const edit=elem('button','修改');edit.type='button';edit.setAttribute('aria-label',`修改 ${r.date} ${r.time} 的讀數`);
     edit.onclick=()=>{
       editingId=r.id;$('readingDate').value=r.date;$('readingTime').value=r.time;
-      if(viewMode==='tou')for(const [id,key] of [['meter09','m09'],['meter10','m10'],['meter14','m14'],['meter18','m18']])$(id).value=String(r[key]);
+      if(viewMode==='tou')for(const [id,key] of [['meter09','m09'],['meter10','m10'],['meter14','m14'],['meter18','m18']])$(id).value=r[key]==null?'':String(r[key]);
       else $('readingValue').value=String(r.reading);
       $('readingNote').value=r.note||'';$('submitBtn').textContent='儲存修改';$('cancelEdit').hidden=false;$('status').hidden=true;
       $('inputTitle').scrollIntoView({block:'center',behavior:'smooth'});
@@ -857,7 +868,7 @@ $('csvInput').addEventListener('change',async event=>{
       const numberAt=idx=>{const raw=(cells[idx]||'').trim().replaceAll(',','');return raw===''?NaN:Number(raw);};
       let record;if(isTou){
         if([m09idx,m10idx,m14idx,m18idx].some(i=>i<0))throw Error('CSV 缺少新制 09／10／14／18 欄位。');
-        record={date,time,note,m09:numberAt(m09idx),m10:numberAt(m10idx),m14:numberAt(m14idx),m18:numberAt(m18idx)};
+        record={date,time,note,m09:numberAt(m09idx),m10:numberAt(m10idx),m14:(cells[m14idx]||'').trim()===''?null:numberAt(m14idx),m18:numberAt(m18idx)};
         if(!isValidReading({...record,id:'temp'},'tou')||taipeiTimestamp(date,time)<TOU_START)throw Error('CSV 新制讀數或日期錯誤。');
       }else{
         record={date,time,note,reading:numberAt(2)};
@@ -866,7 +877,7 @@ $('csvInput').addEventListener('change',async event=>{
       const dest=isTou?candTou:candOld;const found=dest.find(r=>r.date===date&&r.time===time);
       if(found){
         const keys=isTou?['m09','m10','m14','m18']:['reading'];
-        if(keys.some(k=>Math.abs(found[k]-record[k])>1e-8))throw Error(`${date} ${time} 既有度數不同，已取消匯入。`);
+        if(keys.some(k=>found[k]==null||record[k]==null?!(found[k]==null&&record[k]==null):Math.abs(found[k]-record[k])>1e-8))throw Error(`${date} ${time} 既有度數不同，已取消匯入。`);
         if(note&&!found.note){found.note=note;updated++;}
       }else{
         dest.push({id:'i'+Date.now().toString(36)+Math.random().toString(36).slice(2),...record});
@@ -878,7 +889,7 @@ $('csvInput').addEventListener('change',async event=>{
     for(const [mode,rows] of [['old',candOld],['tou',candTou]]){
       if(rows.length>3000)throw Error('匯入筆數超過上限。');
       const keys=mode==='old'?['reading']:['m09','m10','m14','m18'];
-      for(let i=1;i<rows.length;i++)for(const k of keys)if(rows[i][k]<rows[i-1][k]-1e-7)throw Error(`匯入後 ${mode==='tou'?k:'舊制'} 累計度數倒退，請檢查 CSV。`);
+      for(let i=1;i<rows.length;i++)for(const k of keys)if(rows[i][k]!=null&&rows[i-1][k]!=null&&rows[i][k]<rows[i-1][k]-1e-7)throw Error(`匯入後 ${mode==='tou'?k:'舊制'} 累計度數倒退，請檢查 CSV。`);
     }
     if(!addedOld&&!addedTou&&!updated){alertUser('資料全部已存在，不需要重複匯入。');return;}
     if(!confirm(`確定匯入舊制 ${addedOld} 筆／新制 ${addedTou} 筆，補上 ${updated} 筆備註？`))return;
